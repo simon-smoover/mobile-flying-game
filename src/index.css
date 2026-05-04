@@ -1,0 +1,116 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #05050a;
+}
+
+.app {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.viewport {
+  position: absolute;
+  inset: 0;
+}
+
+.viewport canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.hud {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  text-align: center;
+  pointer-events: none;
+  color: #f4f2ff;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.65);
+}
+
+.hud .theme {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.65;
+  margin-bottom: 6px;
+}
+
+.hud .score {
+  font-size: 34px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud .combo {
+  font-size: 16px;
+  opacity: 0.85;
+  margin-top: 4px;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  color: #f7f4ff;
+  background: radial-gradient(ellipse at 50% 30%, rgba(40, 20, 80, 0.55), rgba(5, 5, 12, 0.92));
+  backdrop-filter: blur(6px);
+}
+
+.overlay h1 {
+  margin: 0;
+  font-size: clamp(32px, 8vw, 46px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.overlay p {
+  margin: 0;
+  max-width: 320px;
+  line-height: 1.45;
+  opacity: 0.82;
+  font-size: 15px;
+}
+
+.overlay button {
+  pointer-events: auto;
+  margin-top: 8px;
+  padding: 14px 36px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 700;
+  color: #0a0614;
+  background: linear-gradient(120deg, #9bffec, #d56bff);
+  box-shadow: 0 12px 40px rgba(120, 80, 255, 0.45);
+}
+
+.overlay button:active {
+  transform: scale(0.98);
+}
+
+.overlay .bigScore {
+  font-size: 44px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
