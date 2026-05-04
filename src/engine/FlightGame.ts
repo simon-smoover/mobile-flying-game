@@ -3,6 +3,7 @@ import { AudioManager } from '../audio/AudioManager';
 import { CollectibleManager } from '../world/CollectibleManager';
 import { CorridorGenerator } from '../world/CorridorGenerator';
 import { ObstacleManager } from '../world/ObstacleManager';
+import { clampYAboveTerrain } from '../world/terrainHeight';
 import { ThemeManager } from '../world/ThemeManager';
 import { CameraRig } from './CameraRig';
 import { InputController } from './InputController';
@@ -114,6 +115,17 @@ export class FlightGame {
     this.corridor.pathPoint(this.distance, this.playerPos);
     this.playerPos.addScaledVector(this.bitangent, this.smoothedSteerX * 9);
     this.playerPos.addScaledVector(this.normal, this.smoothedSteerY * 5);
+
+    this.chromaBurst *= Math.exp(-5 * dt);
+    const boostVis = Math.min(1, this.boostTime * 0.55 + this.chromaBurst * 0.85);
+    this.playerPos.y = clampYAboveTerrain(
+      this.playerPos.y,
+      this.playerPos.x,
+      this.playerPos.z,
+      this.distance,
+      time,
+      boostVis,
+    );
     this.playerMesh.position.copy(this.playerPos);
 
     this.collectibles.update(this.distance, this.corridor, this.playerPos, dt, {
@@ -143,9 +155,6 @@ export class FlightGame {
       this.combo = THREE.MathUtils.lerp(this.combo, 1, 1 - Math.exp(-3 * dt));
     }
 
-    this.chromaBurst *= Math.exp(-5 * dt);
-
-    const boostVis = Math.min(1, this.boostTime * 0.55 + this.chromaBurst * 0.85);
     this.theme.updateUniforms(time, this.distance, boostVis);
     this.audio.setBoostDrive(boostVis);
 

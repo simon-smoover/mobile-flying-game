@@ -32,6 +32,7 @@ void main() {
   float breathe = 0.04 * sin(uTime * 1.3 + d.x * 6.0);
   col += (n * 0.08 + breathe) * (0.35 + uBoost * 0.9);
   col += uBoost * vec3(0.15, 0.08, 0.35) * pow(max(d.y, 0.0), 3.0);
+  col += vec3(0.04, 0.045, 0.07);
 
   gl_FragColor = vec4(col, 1.0);
 }

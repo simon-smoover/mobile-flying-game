@@ -1,41 +1,48 @@
 import { Howler } from 'howler';
+import { TechnoLoop } from './TechnoLoop';
 
-/** Procedural SFX via Web Audio; Howler owns global volume / unlock helpers. */
+/** Procedural SFX + pumping techno loop via Web Audio; Howler owns global volume. */
 export class AudioManager {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private ambient: OscillatorNode | null = null;
   private ambientGain: GainNode | null = null;
+  private readonly techno = new TechnoLoop();
 
   unlock() {
     if (!this.ctx) {
-      const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AC =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.ctx = new AC();
       this.master = this.ctx.createGain();
-      this.master.gain.value = 0.55;
+      this.master.gain.value = 0.62;
       this.master.connect(this.ctx.destination);
 
       this.ambientGain = this.ctx.createGain();
-      this.ambientGain.gain.value = 0.08;
+      this.ambientGain.gain.value = 0.045;
       this.ambient = this.ctx.createOscillator();
       this.ambient.type = 'sine';
-      this.ambient.frequency.value = 110;
+      this.ambient.frequency.value = 98;
       this.ambient.connect(this.ambientGain);
       this.ambientGain.connect(this.master);
       this.ambient.start();
+
+      this.techno.attach(this.ctx, this.master);
     }
     void this.ctx?.resume();
   }
 
   setVolume(v: number) {
     Howler.volume(v);
-    if (this.master) this.master.gain.value = v * 0.55;
+    if (this.master) this.master.gain.value = v * 0.62;
   }
 
   setBoostDrive(amount: number) {
     if (!this.ambientGain) return;
-    this.ambientGain.gain.value = 0.06 + amount * 0.14;
-    if (this.ambient) this.ambient.frequency.value = 110 + amount * 55;
+    this.ambientGain.gain.value = 0.035 + amount * 0.08;
+    if (this.ambient) this.ambient.frequency.value = 98 + amount * 40;
+    this.techno.setPump(amount);
   }
 
   playCollect() {
@@ -75,6 +82,7 @@ export class AudioManager {
     } catch {
       /* ignore */
     }
+    this.techno.dispose();
     this.ctx?.close();
     this.ctx = null;
     this.master = null;

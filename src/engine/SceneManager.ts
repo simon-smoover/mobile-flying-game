@@ -8,6 +8,8 @@ export class SceneManager {
   private readonly resizeObserver: ResizeObserver;
   private sky: THREE.Mesh;
   private terrain: THREE.Mesh;
+  private hemi: THREE.HemisphereLight;
+  private dir: THREE.DirectionalLight;
   private raf = 0;
   private onFrame: ((dt: number, time: number) => void) | null = null;
   private last = performance.now();
@@ -25,7 +27,7 @@ export class SceneManager {
     this.renderer.setPixelRatio(dpr);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 1.38;
     this.mount.appendChild(this.renderer.domElement);
 
     this.camera = new THREE.PerspectiveCamera(66, 1, 0.1, 2000);
@@ -41,7 +43,12 @@ export class SceneManager {
     this.terrain.position.set(0, -10, 0);
     this.scene.add(this.terrain);
 
-    this.scene.fog = new THREE.FogExp2(theme.palette.fog.clone(), 0.0018);
+    this.hemi = new THREE.HemisphereLight(0xbcd6ff, 0x4a3020, 0.55);
+    this.dir = new THREE.DirectionalLight(0xfff2dd, 0.95);
+    this.dir.position.set(28, 52, 18);
+    this.scene.add(this.hemi, this.dir);
+
+    this.scene.fog = new THREE.FogExp2(theme.palette.fog.clone(), 0.00128);
 
     this.resize();
     window.addEventListener('resize', this.resize);
@@ -94,6 +101,8 @@ export class SceneManager {
     this.stopLoop();
     window.removeEventListener('resize', this.resize);
     this.resizeObserver.disconnect();
+    this.scene.remove(this.hemi);
+    this.scene.remove(this.dir);
     this.scene.remove(this.sky);
     this.scene.remove(this.terrain);
     this.sky.geometry.dispose();

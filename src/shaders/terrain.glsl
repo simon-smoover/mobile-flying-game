@@ -74,7 +74,8 @@ void main() {
   vec3 base = mix(uWaveColor, uFoamColor, fres);
   float pulse = 0.15 * sin(uTime * 2.0 + vWorld.x * 0.08 + vWorld.z * 0.08);
   vec3 col = base + pulse * vec3(0.2, 0.35, 0.6) + uBoost * vec3(0.35, 0.1, 0.5);
-  float fogF = fogExp(vFog * 2.2, 1.35);
+  col = col * 1.12 + vec3(0.03, 0.035, 0.05);
+  float fogF = fogExp(vFog * 2.2, 1.22);
   col = applyFog(col, fogF, uFogColor);
   gl_FragColor = vec4(col, 1.0);
 }

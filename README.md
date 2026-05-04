@@ -7,6 +7,7 @@ Browser prototype: Vite + React + TypeScript + Three.js. See [prd.md](./prd.md) 
 ```bash
 npm install
 npm run dev
+npm run test   # unit tests (terrain / clipping math)
 ```
 
 ## Vercel
