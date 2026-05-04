@@ -264,6 +264,5 @@ export class FlightGame {
     (this.playerMesh.material as THREE.Material).dispose();
     this.playerMesh.geometry.dispose();
     this.scene.dispose(this.theme);
-    this.theme.dispose();
   }
 }

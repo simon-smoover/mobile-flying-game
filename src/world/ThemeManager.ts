@@ -114,6 +114,4 @@ export class ThemeManager {
     this.skyMat.uniforms.uCamPos.value.copy(cam);
   }
 
-  /** GPU materials are disposed by `SceneManager.dispose` after meshes are removed. */
-  dispose() {}
 }
