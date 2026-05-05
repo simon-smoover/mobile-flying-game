@@ -42,6 +42,7 @@ export class FlightGame {
   private score = 0;
   private chromaBurst = 0;
   private nearMiss = 0;
+  private wasBoosting = false;
   private smoothedSteerX = 0;
   private smoothedSteerY = 0;
   private readonly playerPos = new THREE.Vector3();
@@ -107,6 +108,9 @@ export class FlightGame {
 
     if (this.boostTime > 0) this.boostTime = Math.max(0, this.boostTime - dt);
     const boosting = this.boostTime > 0;
+    if (boosting && !this.wasBoosting) this.audio.playBoostStart();
+    if (!boosting && this.wasBoosting) this.audio.playBoostEnd();
+    this.wasBoosting = boosting;
     const spd = BASE_SPEED * ease * (boosting ? BOOST_MULT : 1);
     this.distance += spd * dt;
 
@@ -156,7 +160,7 @@ export class FlightGame {
     }
 
     this.theme.updateUniforms(time, this.distance, boostVis);
-    this.audio.setBoostDrive(boostVis);
+    this.audio.setIntensity(boosting ? 2 : 1);
 
     this.cameraRig.update(dt, {
       playerPos: this.playerPos,
@@ -189,14 +193,14 @@ export class FlightGame {
   private addBoost() {
     this.boostTime = Math.min(6.5, this.boostTime + 3.4);
     this.chromaBurst = 1;
-    this.audio.playBoost();
   }
 
   private crash() {
     if (this.state !== 'playing') return;
     this.state = 'crashed';
     this.audio.playCrash();
-    this.audio.setBoostDrive(0);
+    this.audio.playBoostEnd();
+    this.audio.setIntensity(0);
     this.pushUi(true);
   }
 
@@ -230,18 +234,24 @@ export class FlightGame {
   }
 
   start() {
-    this.audio.unlock();
+    this.audio.init();
+    this.audio.playUiClick();
+    this.audio.startMusic();
     this.resetRun();
     this.state = 'playing';
     this.chromaBurst = 0.85;
+    this.audio.setIntensity(1);
     this.pushUi(true);
   }
 
   restart() {
-    this.audio.unlock();
+    this.audio.init();
+    this.audio.playUiClick();
+    this.audio.startMusic();
     this.resetRun();
     this.state = 'playing';
     this.chromaBurst = 0.75;
+    this.audio.setIntensity(1);
     this.pushUi(true);
   }
 
@@ -254,6 +264,7 @@ export class FlightGame {
     this.comboTimer = 0;
     this.score = 0;
     this.nearMiss = 0;
+    this.wasBoosting = false;
     this.smoothedSteerX = 0;
     this.smoothedSteerY = 0;
     this.input.steerX = 0;

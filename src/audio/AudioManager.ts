@@ -1,92 +1,173 @@
-import { Howler } from 'howler';
-import { TechnoLoop } from './TechnoLoop';
+import { Howl, Howler } from 'howler';
 
-/** Procedural SFX + pumping techno loop via Web Audio; Howler owns global volume. */
+export type IntensityLevel = 0 | 1 | 2;
+
+/**
+ * Modular Howler-based audio system.
+ * Uses placeholder files from `/public/audio` until replaced by real licensed assets.
+ */
 export class AudioManager {
-  private ctx: AudioContext | null = null;
-  private master: GainNode | null = null;
-  private ambient: OscillatorNode | null = null;
-  private ambientGain: GainNode | null = null;
-  private readonly techno = new TechnoLoop();
+  private initialized = false;
+  private musicStarted = false;
+  private intensity: IntensityLevel = 0;
 
-  unlock() {
-    if (!this.ctx) {
-      const AC =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      this.ctx = new AC();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = 0.62;
-      this.master.connect(this.ctx.destination);
+  masterVolume = 1;
+  musicVolume = 0.8;
+  sfxVolume = 0.95;
 
-      this.ambientGain = this.ctx.createGain();
-      this.ambientGain.gain.value = 0.045;
-      this.ambient = this.ctx.createOscillator();
-      this.ambient.type = 'sine';
-      this.ambient.frequency.value = 98;
-      this.ambient.connect(this.ambientGain);
-      this.ambientGain.connect(this.master);
-      this.ambient.start();
+  private musicIntro!: Howl;
+  private musicDrive!: Howl;
+  private boostLayer!: Howl;
+  private collectSfx!: Howl;
+  private crashSfx!: Howl;
+  private uiClickSfx!: Howl;
 
-      this.techno.attach(this.ctx, this.master);
-    }
-    void this.ctx?.resume();
+  init() {
+    if (this.initialized) return;
+    this.initialized = true;
+
+    this.musicIntro = this.createHowl('/audio/music_loop_128bpm.mp3', true, 0.65, 'music');
+    this.musicDrive = this.createHowl('/audio/music_loop_128bpm.mp3', true, 0.85, 'music');
+    this.boostLayer = this.createHowl('/audio/boost_layer_128bpm.mp3', true, 0, 'music');
+
+    this.collectSfx = this.createHowl('/audio/collect.wav', false, 1, 'sfx');
+    this.crashSfx = this.createHowl('/audio/crash.wav', false, 1, 'sfx');
+    this.uiClickSfx = this.createHowl('/audio/ui_click.wav', false, 0.8, 'sfx');
+
+    this.applyVolumes();
   }
 
-  setVolume(v: number) {
-    Howler.volume(v);
-    if (this.master) this.master.gain.value = v * 0.62;
+  startMusic() {
+    if (!this.initialized) this.init();
+    if (this.musicStarted) return;
+    this.musicStarted = true;
+    this.ensurePlaying(this.musicIntro);
+    this.ensurePlaying(this.musicDrive);
+    this.ensurePlaying(this.boostLayer);
+    this.setIntensity(1);
   }
 
-  setBoostDrive(amount: number) {
-    if (!this.ambientGain) return;
-    this.ambientGain.gain.value = 0.035 + amount * 0.08;
-    if (this.ambient) this.ambient.frequency.value = 98 + amount * 40;
-    this.techno.setPump(amount);
+  stopMusic() {
+    if (!this.initialized) return;
+    this.musicStarted = false;
+    this.musicIntro.stop();
+    this.musicDrive.stop();
+    this.boostLayer.stop();
   }
 
   playCollect() {
-    this.beep(880, 0.05, 0.12, 'sine');
-    this.beep(1320, 0.04, 0.08, 'triangle');
+    if (!this.initialized) return;
+    this.collectSfx.stop();
+    this.collectSfx.play();
   }
 
-  playBoost() {
-    this.beep(220, 0.12, 0.2, 'sawtooth');
-    this.beep(440, 0.1, 0.16, 'square');
+  playBoostStart() {
+    if (!this.initialized) return;
+    this.boostLayer.fade(this.boostLayer.volume(), this.scaledMusic(0.75), 300);
+  }
+
+  playBoostEnd() {
+    if (!this.initialized) return;
+    this.boostLayer.fade(this.boostLayer.volume(), 0, 300);
   }
 
   playCrash() {
-    this.beep(120, 0.22, 0.35, 'sawtooth');
-    this.beep(60, 0.35, 0.2, 'sine');
+    if (!this.initialized) return;
+    this.crashSfx.stop();
+    this.crashSfx.play();
+    // Quick dip after crash; restart sets intensity back to driving.
+    this.setIntensity(0);
   }
 
-  private beep(freq: number, dur: number, vol: number, type: OscillatorType) {
-    if (!this.ctx || !this.master) return;
-    const o = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    o.type = type;
-    o.frequency.value = freq;
-    g.gain.value = 0.0001;
-    o.connect(g);
-    g.connect(this.master);
-    const t0 = this.ctx.currentTime;
-    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    o.start(t0);
-    o.stop(t0 + dur + 0.02);
+  playUiClick() {
+    if (!this.initialized) return;
+    this.uiClickSfx.stop();
+    this.uiClickSfx.play();
+  }
+
+  setIntensity(level: number) {
+    if (!this.initialized) return;
+    const clamped = (level < 1 ? 0 : level < 2 ? 1 : 2) as IntensityLevel;
+    this.intensity = clamped;
+    if (!this.musicStarted) return;
+
+    // Level 0: ambient intro, Level 1: driving loop, Level 2: +boost layer.
+    const introTarget = clamped === 0 ? 0.6 : 0.05;
+    const driveTarget = clamped >= 1 ? 0.85 : 0.18;
+    const boostTarget = clamped === 2 ? 0.75 : 0;
+
+    this.musicIntro.fade(this.musicIntro.volume(), this.scaledMusic(introTarget), 240);
+    this.musicDrive.fade(this.musicDrive.volume(), this.scaledMusic(driveTarget), 240);
+    this.boostLayer.fade(this.boostLayer.volume(), this.scaledMusic(boostTarget), 300);
+  }
+
+  setMasterVolume(value: number) {
+    this.masterVolume = clamp01(value);
+    this.applyVolumes();
+  }
+
+  setMusicVolume(value: number) {
+    this.musicVolume = clamp01(value);
+    this.applyVolumes();
+  }
+
+  setSfxVolume(value: number) {
+    this.sfxVolume = clamp01(value);
+    this.applyVolumes();
+  }
+
+  private applyVolumes() {
+    Howler.volume(this.masterVolume);
+    if (!this.initialized) return;
+    this.musicIntro.volume(this.scaledMusic(this.intensity === 0 ? 0.6 : 0.05));
+    this.musicDrive.volume(this.scaledMusic(this.intensity >= 1 ? 0.85 : 0.18));
+    this.boostLayer.volume(this.scaledMusic(this.intensity === 2 ? 0.75 : 0));
+    this.collectSfx.volume(this.scaledSfx(1));
+    this.crashSfx.volume(this.scaledSfx(1));
+    this.uiClickSfx.volume(this.scaledSfx(0.8));
+  }
+
+  private scaledMusic(base: number) {
+    return clamp01(base * this.musicVolume);
+  }
+
+  private scaledSfx(base: number) {
+    return clamp01(base * this.sfxVolume);
+  }
+
+  private ensurePlaying(sound: Howl) {
+    if (!sound.playing()) sound.play();
+  }
+
+  private createHowl(src: string, loop: boolean, baseVolume: number, channel: 'music' | 'sfx') {
+    return new Howl({
+      src: [src],
+      loop,
+      volume: channel === 'music' ? this.scaledMusic(baseVolume) : this.scaledSfx(baseVolume),
+      html5: false,
+      preload: true,
+      onloaderror: (_id, err) => {
+        console.warn(`[AudioManager] Failed to load ${src}`, err);
+      },
+      onplayerror: (_id, err) => {
+        console.warn(`[AudioManager] Failed to play ${src}`, err);
+      },
+    });
   }
 
   dispose() {
-    try {
-      this.ambient?.stop();
-    } catch {
-      /* ignore */
-    }
-    this.techno.dispose();
-    this.ctx?.close();
-    this.ctx = null;
-    this.master = null;
-    this.ambient = null;
-    this.ambientGain = null;
+    if (!this.initialized) return;
+    this.stopMusic();
+    this.musicIntro.unload();
+    this.musicDrive.unload();
+    this.boostLayer.unload();
+    this.collectSfx.unload();
+    this.crashSfx.unload();
+    this.uiClickSfx.unload();
+    this.initialized = false;
   }
+}
+
+function clamp01(v: number) {
+  return Math.max(0, Math.min(1, v));
 }
